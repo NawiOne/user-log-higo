@@ -3,11 +3,11 @@ var express = require('express');
 var path = require('path');
 var cookieParser = require('cookie-parser');
 
-var usersRouter = require('./routes/user');
+var usersRouter = require('../routes/user');
 
 var app = express();
 
-require('./helpers/dbConnect')()
+require('../helpers/dbConnect')()
 
 // view engine setup
 app.set('views', path.join(__dirname, 'views'));
