@@ -102,6 +102,7 @@ async function getSummary() {
                 },
                 {
                     $project: {
+                        _id: 0,
                         date: "$_id",
                         newUsers: 1,
                         returningUsers: 1
