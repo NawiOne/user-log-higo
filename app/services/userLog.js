@@ -74,13 +74,91 @@ async function getSummary() {
                     }
                 }
             ],
+            newAndReturningPerDay: [
+                {
+                    $group: {
+                        _id: "$email",
+                        firstLogin: { $first: "$date" },
+                        logins: { $push: "$date" }
+                    }
+                },
+                {
+                    $unwind: "$logins"
+                },
+                {
+                    $group: {
+                        _id: "$logins",
+                        newUsers: {
+                            $sum: {
+                                $cond: [{ $eq: ["$logins", "$firstLogin"] }, 1, 0]
+                            }
+                        },
+                        returningUsers: {
+                            $sum: {
+                                $cond: [{ $ne: ["$logins", "$firstLogin"] }, 1, 0]
+                            }
+                        }
+                    }
+                },
+                {
+                    $project: {
+                        date: "$_id",
+                        newUsers: 1,
+                        returningUsers: 1
+                    }
+                },
+                {
+                    $sort: { date: 1 }
+                }
+            ],
+            totalNewAndReturningUser: [
+                {
+                    $group: {
+                        _id: "$email",
+                        firstLogin: { $first: "$date" },
+                        logins: { $push: "$date" }
+                    }
+                },
+                {
+                    $unwind: "$logins"
+                },
+                {
+                    $group: {
+                        _id: "$logins",
+                        newUsers: {
+                            $sum: {
+                                $cond: [{ $eq: ["$logins", "$firstLogin"] }, 1, 0]
+                            }
+                        },
+                        returningUsers: {
+                            $sum: {
+                                $cond: [{ $ne: ["$logins", "$firstLogin"] }, 1, 0]
+                            }
+                        }
+                    }
+                },
+                {
+                    $group: {
+                        _id: null,
+                        totalNewUsers: { $sum: "$newUsers" },
+                        totalReturningUsers: { $sum: "$returningUsers" }
+                    }
+                },
+                {
+                    $project: {
+                        _id: 0,
+                        totalNewUsers: 1,
+                        totalReturningUsers: 1
+                    }
+                }
+            ],
             totalData: [
                 {
                     $count: "totalData"
                 }
             ]
         }
-    )
+    ).allowDiskUse()
 
 
     return data[0]
