@@ -1,5 +1,33 @@
 const userModel = require('../models/userLog')
 
+
+async function index({ page, limit }) {
+    return await userModel.aggregate([
+        {
+            $group: {
+                _id: '$email',
+                name: { $first: '$name' },
+                email: { $first: '$email' },
+                phone: { $first: '$phone' },
+                gender: { $first: '$gender' },
+            },
+        },
+        {
+            $project: {
+                _id: 0,
+                name: 1,
+                email: 1,
+                phone: 1,
+                gender: 1,
+            },
+        },
+        { $skip: (page - 1) * limit },
+        { $limit: limit },
+        // { $sort: { name: 1 } }
+    ])
+
+}
+
 async function getSummary() {
     const data = await userModel.aggregate().facet(
         {
@@ -161,8 +189,16 @@ async function getSummary() {
         }
     ).allowDiskUse()
 
+    const result = data[0]
 
-    return data[0]
+    return {
+        ...result,
+        crowdedDays: result.crowdedDays[0],
+        crowdedHours: result.crowdedHours[0],
+        totalData: result.totalData[0].totalData,
+        uniqueUsersTotal: result.uniqueUsersPerDay[0].uniqueUserCount,
+        totalNewAndReturningUser: result.totalNewAndReturningUser[0]
+    }
 
 }
 
@@ -258,7 +294,11 @@ async function getSegmentation() {
                             $multiply: [{ $divide: ["$brands.count", "$total"] }, 100]
                         }
                     }
+                },
+                {
+                    $sort: { brand: 1 }
                 }
+
             ],
             digitalInterest: [
                 {
@@ -291,6 +331,9 @@ async function getSegmentation() {
     )
 
     data[0].ageGroup = mappingAgeGroup(data[0].ageGroup)
+    data[0].gender = mappingGender(data[0].gender)
+    data[0].brandDevice = mappingBrandDevice(data[0].brandDevice)
+    data[0].digitalInterest = mappingDigitalInterest(data[0].digitalInterest)
 
     return data[0]
 
@@ -364,23 +407,21 @@ async function detail(email) {
     ])
 
     return {
-        detail,
+        detail: detail[0],
         topUserPerLocation
     }
 
 }
 
 
-
-
 function mappingAgeGroup(ageData) {
     const ageRanges = [
-        { range: "<18", count: 0, percentage: 0 },
-        { range: "18-24", count: 0, percentage: 0 },
-        { range: "25-34", count: 0, percentage: 0 },
-        { range: "35-44", count: 0, percentage: 0 },
-        { range: "45-64", count: 0, percentage: 0 },
-        { range: ">64", count: 0, percentage: 0 },
+        { range: "<18", count: 0, percentage: 0, color: '#EF5A6F' },
+        { range: "18-24", count: 0, percentage: 0, color: '#375E83' },
+        { range: "25-34", count: 0, percentage: 0, color: '#259AE6' },
+        { range: "35-44", count: 0, percentage: 0, color: '#FFA70B' },
+        { range: "45-64", count: 0, percentage: 0, color: '#059212' },
+        { range: ">64", count: 0, percentage: 0, color: '#028391' },
     ];
 
     const totalCount = ageData.reduce((sum, item) => sum + item.count, 0);
@@ -413,8 +454,126 @@ function mappingAgeGroup(ageData) {
 
 }
 
+function mappingBrandDevice(device) {
+    const colors = [
+        {
+            brand: 'Huawei',
+            color: '#ffbe0b'
+        },
+        {
+            brand: 'Xiaomi',
+            color: '#0077b6'
+        },
+        {
+            brand: 'LG',
+            color: '#8338ec'
+        },
+        {
+            brand: 'Nokia',
+            color: '#FF0000'
+        },
+        {
+            brand: 'Motorola',
+            color: '#A1DD70'
+        },
+        {
+            brand: 'Sony',
+            color: '#DBB5B5'
+        },
+        {
+            brand: 'OnePlus',
+            color: '#3f7d20'
+        },
+        {
+            brand: 'Samsung',
+            color: '#ee6c4d'
+        },
+        {
+            brand: 'Apple',
+            color: '#540b0e'
+        },
+        {
+            brand: 'Google',
+            color: '#2ec4b6'
+        }
+    ]
+    return device.map(item => {
+        const color = colors.find(col => col.brand === item.brand)
+        return {
+            ...item,
+            color: color?.color
+        }
+    })
+}
+
+function mappingDigitalInterest(interest) {
+    const colors = [
+        {
+            interest: 'E-commerce',
+            color: '#ffbe0b'
+        },
+        {
+            interest: 'Social Media',
+            color: '#0077b6'
+        },
+        {
+            interest: 'News',
+            color: '#8338ec'
+        },
+        {
+            interest: 'Podcast',
+            color: '#FF0000'
+        },
+        {
+            interest: 'Technology',
+            color: '#A1DD70'
+        },
+        {
+            interest: 'Gaming',
+            color: '#DBB5B5'
+        },
+        {
+            interest: 'Sport',
+            color: '#3f7d20'
+        },
+        {
+            interest: 'Music',
+            color: '#ee6c4d'
+        },
+    ]
+    return interest.map(item => {
+        const color = colors.find(col => col.interest === item.interest)
+        return {
+            ...item,
+            color: color?.color
+        }
+    })
+}
+
+function mappingGender(gender) {
+    const colors = [
+        {
+            gender: 'Male',
+            color: '#ffbe0b'
+        },
+        {
+            gender: 'Female',
+            color: '#0077b6'
+        },
+    ]
+    return gender.map(item => {
+        const color = colors.find(col => col.gender === item.gender)
+        return {
+            ...item,
+            color: color?.color
+        }
+    })
+}
+
+
 
 module.exports = {
+    index,
     getSummary,
     getSegmentation,
     detail
