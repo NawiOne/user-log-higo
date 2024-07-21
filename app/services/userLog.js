@@ -1,3 +1,4 @@
+const DataNotFound = require('../exceptions/DataNotFound')
 const userModel = require('../models/userLog')
 
 
@@ -357,6 +358,8 @@ async function detail(email) {
             $limit: 1
         }
     ])
+
+    if (detail.length === 0) throw new DataNotFound()
 
     const topUserPerLocation = await userModel.aggregate([
         {
